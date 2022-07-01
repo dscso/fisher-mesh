@@ -2,6 +2,7 @@
 
 #define MAX_FRAME_BUFFER_SIZE   100
 #define ADDRESS_SIZE            8
+#define Address                 uint8_t
 
 
 typedef enum Status {
@@ -9,13 +10,10 @@ typedef enum Status {
     ERR = 1
 } Status;
 
-typedef enum fisher_frame_type {
-    OGM2,
+enum fisher_frame_type {
+    FISHER_FRAME_TYPE_HELLO,
 
-} fisherFrameType;
-typedef struct Address {
-    uint8_t Addr;
-} Address;
+};
 
 
 // what should be serialized/deserialized and send/recieved via cc1200
@@ -53,8 +51,16 @@ struct fisher_boat {
     // routing table
     //struct fisher_route route[ADDRESS_SIZE];
     // routing
-    struct fisher_frame to_be_sent[MAX_FRAME_BUFFER_SIZE];
 
+    struct fisher_frame to_be_sent[MAX_FRAME_BUFFER_SIZE];
+    int to_be_sent_read;
+    int to_be_sent_write;
+    int to_be_sent_count;
+
+
+    int tick;
+    int hello_evey_tick;
+    int hello_seq;
 };
 
 // inits the fisherBoat struct, sets address, inits clean routing table
@@ -75,4 +81,8 @@ Status fisher_packet_read(struct fisher_boat* boat /* TODO */);
 // routes frames
 // if hardware receives a packet, it will be passed to the algorithm with this function
 Status fisher_frame_process(struct fisher_boat *boat, struct fisher_frame * frames, int len /* TODO */);
-Status fisher_frame_get_to_be_sent(struct fisher_boat *boat, struct fisher_frame * frames, int *len /* TODO */);
+struct fisher_frame * fisher_frame_get_to_be_sent(struct fisher_boat *boat);
+
+
+Status fisher_frame_generate_hello(struct fisher_boat *boat);
+void fisher_frame_print(struct fisher_frame *frame);
