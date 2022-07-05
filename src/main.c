@@ -1,39 +1,56 @@
 #include <stdio.h>
 #include <unistd.h>
 #include "fisher.h"
-#include "util.h"
 #define     ever    ;;
+
+struct connection {
+    Address v;
+    Address w;
+};
+
+#define AMOUNT_OF_NODES     5
+Address nodes[AMOUNT_OF_NODES] = {10, 23, 11, 42, 100};
+static struct connection connections[] = {
+        {0, 1},
+        {1, 2},
+        //{2, 3}
+};
 
 int main() {
     printf("Hello, World!\n");
-    struct fisher_boat boat;
-    struct fisher_boat boat2;
-    fisher_init(&boat, 123);
-    fisher_init(&boat2, 111);
+    const amount_of_nodes = sizeof(nodes) / sizeof(Address);
+    const amount_of_connections = sizeof(connections) / sizeof(struct connection);
+    struct fisher_boat boat[amount_of_nodes];
+
+    for (int i = 0; i < amount_of_nodes; i++) {
+        fisher_init(&(boat[i]), nodes[i]);
+    }
+
 
 
     for (ever) {
-        fisher_tick(&boat);
-        fisher_tick(&boat2);
-
-        struct fisher_frame *frame2 = fisher_frame_get_to_be_sent(&boat2);
-        int count = 0;
-        while (frame2 != NULL) {
-            printf("Sending form boat1 to boat2\n");
-            fisher_packet_read(&boat, frame2);
-            frame2 = fisher_frame_get_to_be_sent(&boat2);
+        // tick all boats
+        for (int i = 0; i < amount_of_nodes; i++) {
+            fisher_tick(&(boat[i]));
         }
-
-
-
-        struct fisher_frame *frame = fisher_frame_get_to_be_sent(&boat);
-        while (frame != NULL) {
-            printf("-012-3123123123123");
-            fisher_frame_print(frame);
-            count++;
-            frame = fisher_frame_get_to_be_sent(&boat);
+        // connect all boats
+        for (int i = 0; i < amount_of_connections; i++) {
+            struct fisher_frame *frame = fisher_frame_get_to_be_sent(&(boat[connections[i].v]));
+            while (frame != NULL) {
+                //fisher_frame_print(frame);
+                fisher_packet_read(&(boat[connections[i].w]), frame);
+                frame = fisher_frame_get_to_be_sent(&(boat[connections[i].v]));
+            }
         }
-        if (count != 0) printf("Sended %d\n", count);
+        // other way around
+        for (int i = 0; i < amount_of_connections; i++) {
+            struct fisher_frame *frame = fisher_frame_get_to_be_sent(&(boat[connections[i].w]));
+            while (frame != NULL) {
+                //fisher_frame_print(frame);
+                fisher_packet_read(&(boat[connections[i].v]), frame);
+                frame = fisher_frame_get_to_be_sent(&(boat[connections[i].w]));
+            }
+        }
         usleep(10000); // evey 10 m
     }
     return 0;

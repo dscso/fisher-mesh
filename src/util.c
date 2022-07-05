@@ -86,3 +86,17 @@ struct RoutingItem* delete(struct RoutingItem* item ,struct fisher_boat *boat) {
 
     return NULL;
 }
+
+Status fisher_route_init(struct fisher_boat *boat) {
+    memset(boat->routes, 0, sizeof(boat->routes));
+    return OK;
+}
+Status fisher_route_insert(struct fisher_boat *boat, Address destination, Address neighbour) {
+    printf("insterting route to %d over %d\n", destination, neighbour);
+    boat->routes[destination] = neighbour;
+    return OK;
+}
+
+Address fisher_route_get(struct fisher_boat *boat, Address destination) {
+    return boat->routes[destination];
+}

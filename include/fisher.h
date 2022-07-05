@@ -6,7 +6,7 @@
 
 #define ROUTINGSIZE             30
 #define BROADCAST               0xff
-#define MAXIMUM_TTL             120
+#define MAXIMUM_TTL             5
 
 typedef enum Status {
     OK = 0,
@@ -60,6 +60,7 @@ struct fisher_boat {
     struct RoutingItem* routing_tabele[ROUTINGSIZE];
     //struct fisher_route route[ADDRESS_SIZE];
     // routing
+    Address routes[256];
 
     struct fisher_frame to_be_sent[MAX_FRAME_BUFFER_SIZE];
     int to_be_sent_read;
@@ -97,3 +98,8 @@ Status fisher_frame_generate_hello(struct fisher_boat *boat);
 void fisher_frame_print(struct fisher_frame *frame);
 
 struct fisher_frame * fisher_add_frame(struct fisher_boat *boat);
+
+
+Status fisher_route_init(struct fisher_boat *boat);
+Status fisher_route_insert(struct fisher_boat *boat, Address destination, Address neighbour);
+Address fisher_route_get(struct fisher_boat *boat, Address destination);

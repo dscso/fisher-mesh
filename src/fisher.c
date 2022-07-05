@@ -15,9 +15,7 @@ Status fisher_init(struct fisher_boat *boat, Address addr){
     boat->to_be_sent_write = 0;
     boat->to_be_sent_count = 0;
 
-    for (int i = 0; i < ROUTINGSIZE; ++i) {
-        boat->routing_tabele[i] = NULL;
-    }
+    fisher_route_init(boat);
 
     boat->tick =0;
     boat->hello_evey_tick = HELLO_EVEY_TICKS;
@@ -60,16 +58,26 @@ Status fisher_packet_read(struct fisher_boat* boat, struct fisher_frame *frame) 
             printf("Recieved HELLO PKG... Forwarding...\n");
             if (frame->ttl == 0) {
                 // drop packet
-                printf("TTL == 0, dropping pkg\n");
+                fisher_frame_print(frame);
+                printf("!!!!!!!!!!!!!!!!!!!!!!!! TTL == 0, dropping pkg\n");
                 break;
             }
+            // TODO
+            // pakete nur an alle nachbarn einzeln weiterleiten, nicht broadcasten.
+            // jeder nachbar außer die herkunft
+            if (frame->originator == boat->addr) {
+                printf("originator is me dropping pkg\n");
+                break;
+            }
+
             // retransmit
             struct fisher_frame *frame_out = fisher_add_frame(boat);
+
             memcpy(frame_out, frame, sizeof(struct fisher_frame));
             frame_out->ttl--;
             frame_out->sender = boat->addr;
             // adding to routing table
-            insert(frame->originator, frame->sender, boat);
+            fisher_route_insert(boat, frame->originator, frame->sender);
             break;
     }
 }
