@@ -1,9 +1,12 @@
 #include <stdint.h>
 
-#define MAX_FRAME_BUFFER_SIZE   100
+#define MAX_FRAME_BUFFER_SIZE   128
 #define ADDRESS_SIZE            8
 #define Address                 uint8_t
+
 #define ROUTINGSIZE             30
+#define BROADCAST               0xff
+#define MAXIMUM_TTL             120
 
 typedef enum Status {
     OK = 0,
@@ -32,11 +35,10 @@ struct fisher_frame {
     // TTL
     int seq;
     Address originator;
-    /*
-     * DATA Packet
-     */
     Address sender;
+    Address receiver;
     Address recipient;
+    // do we need a final_recipient
     int ttl;
     int rssi;
     int length;
@@ -82,7 +84,7 @@ Status fisher_tick(struct fisher_boat *boat);
 
 // generates data frames
 Status fisher_packet_generate(struct fisher_boat *boat /* TODO */);
-Status fisher_packet_read(struct fisher_boat* boat /* TODO */);
+Status fisher_packet_read(struct fisher_boat* boat, struct fisher_frame *frame);
 
 // responds to hello frames
 // routes frames
@@ -93,3 +95,5 @@ struct fisher_frame * fisher_frame_get_to_be_sent(struct fisher_boat *boat);
 
 Status fisher_frame_generate_hello(struct fisher_boat *boat);
 void fisher_frame_print(struct fisher_frame *frame);
+
+struct fisher_frame * fisher_add_frame(struct fisher_boat *boat);

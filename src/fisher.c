@@ -3,7 +3,9 @@
 //
 #include "fisher.h"
 #include <stdio.h>
-#define HELLO_EVEY_TICKS 10
+#include <string.h>
+
+#define HELLO_EVEY_TICKS 100
 
 Status fisher_init(struct fisher_boat *boat, Address addr){
     // init all with 0, create new routing table etc
@@ -42,17 +44,33 @@ Status fisher_tick(struct fisher_boat *boat) {
 Status fisher_packet_generate(struct fisher_boat *boat /* TODO */) {
 
 }
-Status fisher_packet_read(struct fisher_boat* boat /* TODO */) {
+Status fisher_packet_read(struct fisher_boat* boat, struct fisher_frame *frame) {
     // TODO
     // check if it is a ogm msg and forward
+    if (frame == NULL) {
+        printf("Error! processing empty frame!");
+        return ERR;
+    }
+    // drop packet if receiver does not match own address/broadcast
+    if (frame->receiver != boat->addr && frame->receiver != BROADCAST) return OK;
+
+    switch (frame->type) {
+        case FISHER_FRAME_TYPE_HELLO:
+            printf("Recieved HELLO PKG... Forwarding...\n");
+            if (frame->ttl == 0) {
+                // drop packet
+                printf("TTL == 0, dropping pkg\n");
+                break;
+            }
+            // retransmit
+            struct fisher_frame *frame_out = fisher_add_frame(boat);
+            memcpy(frame_out, frame, sizeof(struct fisher_frame));
+            frame_out->ttl--;
+            frame_out->sender = boat->addr;
+            break;
+    }
 }
 
-// responds to hello frames
-// routes frames
-// if hardware recieves a packet, it will be passed to the algorithm with this function
-Status fisher_frame_process(struct fisher_boat *boat, struct fisher_frame * frames, int len /* TODO */) {
-
-}
 struct fisher_frame * fisher_frame_get_to_be_sent(struct fisher_boat *boat) {
     if (boat->to_be_sent_count == 0) return NULL;
     boat->to_be_sent_count--;
@@ -67,14 +85,16 @@ struct fisher_frame * fisher_frame_get_to_be_sent(struct fisher_boat *boat) {
 struct fisher_frame * fisher_add_frame(struct fisher_boat *boat) {
     if (boat->to_be_sent_count == MAX_FRAME_BUFFER_SIZE) return NULL;
     struct fisher_frame *ret = &(boat->to_be_sent[boat->to_be_sent_write]);
-    printf(" ----- %d", boat->to_be_sent_write);
     boat->to_be_sent_write = (boat->to_be_sent_write + 1) % MAX_FRAME_BUFFER_SIZE;
     boat->to_be_sent_count++;
     return ret;
 }
 
 Status fisher_frame_generate_hello(struct fisher_boat *boat) {
-    printf("Generating hello packet (%d)...\n", boat->hello_seq);
+    if (boat->addr == 123) {
+        printf("Generating hello packet (%d)...\n", boat->hello_seq);
+    }
+
     struct fisher_frame *pkg = fisher_add_frame(boat);
     boat->hello_seq++;
     if (pkg == NULL) {
@@ -83,21 +103,26 @@ Status fisher_frame_generate_hello(struct fisher_boat *boat) {
     }
     pkg->type = FISHER_FRAME_TYPE_HELLO;
     pkg->originator = boat->addr;
+    pkg->sender = boat->addr;
+    pkg->recipient = BROADCAST;
+    pkg->receiver = BROADCAST;
     pkg->seq = boat->hello_seq - 1;
-
+    pkg->ttl = MAXIMUM_TTL;
+    return OK;
 }
 /*
  * debug frame
  */
 void fisher_frame_print(struct fisher_frame *frame) {
-    printf("Fisher packet   type:");
+    printf("----\nFisher packet   type:");
     switch (frame->type) {
         case (FISHER_FRAME_TYPE_HELLO):
             printf("HELLO");
-            printf("seq:\t%d", frame->seq);
+            printf(" seq:\t%d\tttl: %d", frame->seq, frame->ttl);
+            printf("\n%d\t%d\t -> \t%d --> %d\n", frame->originator, frame->sender, frame->receiver, frame->recipient);
             break;
         default:
             printf("UNKNOWN");
     }
-    printf("\n");
+    printf("\n----\n");
 }
