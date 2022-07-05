@@ -4,6 +4,7 @@
 #include "fisher.h"
 #include <stdio.h>
 #include <string.h>
+#include "util.h"
 
 #define HELLO_EVEY_TICKS 100
 
@@ -67,6 +68,8 @@ Status fisher_packet_read(struct fisher_boat* boat, struct fisher_frame *frame) 
             memcpy(frame_out, frame, sizeof(struct fisher_frame));
             frame_out->ttl--;
             frame_out->sender = boat->addr;
+            // adding to routing table
+            insert(frame->originator, frame->sender, boat);
             break;
     }
 }

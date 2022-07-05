@@ -40,7 +40,7 @@ struct RoutingItem *search(uint8_t node_address, struct fisher_boat *boat ) {
 
 void insert(uint8_t node_adress , uint8_t node_neighbour,struct fisher_boat *boat ) {
 
-    printf("%d",node_adress);
+    printf("inserting route from %d -> %d",node_adress);
     struct RoutingItem *item = (struct RoutingItem*) malloc(sizeof(struct RoutingItem));
     item->node_neighbour = node_neighbour;
     item->node_address = node_adress;
