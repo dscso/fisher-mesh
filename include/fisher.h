@@ -3,7 +3,7 @@
 #define MAX_FRAME_BUFFER_SIZE   100
 #define ADDRESS_SIZE            8
 #define Address                 uint8_t
-
+#define ROUTINGSIZE             30
 
 typedef enum Status {
     OK = 0,
@@ -14,6 +14,12 @@ enum fisher_frame_type {
     FISHER_FRAME_TYPE_HELLO,
 
 };
+
+struct RoutingItem {
+    uint8_t node_address;
+    uint8_t node_neighbour;
+};
+
 
 
 // what should be serialized/deserialized and send/recieved via cc1200
@@ -49,6 +55,7 @@ struct fisher_package {
 struct fisher_boat {
     Address addr;
     // routing table
+    struct RoutingItem* routing_tabele[ROUTINGSIZE];
     //struct fisher_route route[ADDRESS_SIZE];
     // routing
 
