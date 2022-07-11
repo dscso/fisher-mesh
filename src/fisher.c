@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "util.h"
+#define DEBUG printf("[%d]\t\t", boat->addr); printf
 
 #define HELLO_EVEY_TICKS 100
 
@@ -41,7 +42,7 @@ Status fisher_tick(struct fisher_boat *boat) {
 
 // generates data frames
 Status fisher_packet_generate(struct fisher_boat *boat /* TODO */) {
-
+    return ERR;
 }
 Status fisher_packet_read(struct fisher_boat* boat, struct fisher_frame *frame) {
     // TODO
@@ -55,29 +56,52 @@ Status fisher_packet_read(struct fisher_boat* boat, struct fisher_frame *frame) 
 
     switch (frame->type) {
         case FISHER_FRAME_TYPE_HELLO:
-            printf("Recieved HELLO PKG... Forwarding...\n");
+            DEBUG("Recieved HELLO PKG form %d Forwarding...\n", frame->originator);
             if (frame->ttl == 0) {
                 // drop packet
                 fisher_frame_print(frame);
-                printf("!!!!!!!!!!!!!!!!!!!!!!!! TTL == 0, dropping pkg\n");
+                DEBUG("!!!!!!!!!!!!!!!!!!!!!!!! TTL == 0, dropping pkg\n");
                 break;
             }
             // TODO
             // pakete nur an alle nachbarn einzeln weiterleiten, nicht broadcasten.
             // jeder nachbar außer die herkunft
             if (frame->originator == boat->addr) {
-                printf("originator is me dropping pkg\n");
+                printf("[%d]\t\toriginator is me dropping pkg\n", boat->addr);
                 break;
             }
 
             // retransmit
-            struct fisher_frame *frame_out = fisher_add_frame(boat);
+            // iterate threw all
+            for (int i = 0; i < sizeof(boat->routes)/sizeof(struct fisher_route); i++) {
+                struct fisher_route *route = &(boat->routes[i]);
+                if (!route->active) continue;
+                if (frame->sender == route->node_address) continue; // do not echo back to sender
+                if (frame->ttl < route->hops) { // if there exist already a better route
+                    DEBUG("hmm skip to %d over %d\n", frame->originator, frame->sender);
+                    continue;
+                }
 
-            memcpy(frame_out, frame, sizeof(struct fisher_frame));
-            frame_out->ttl--;
-            frame_out->sender = boat->addr;
+                struct fisher_frame *frame_out = fisher_add_frame(boat);
+                if (frame_out == NULL) {
+                    printf("Error, cannot sent more frames, buffer full!");
+                    break;
+                }
+                memcpy(frame_out, frame, sizeof(struct fisher_frame));
+
+                frame_out->ttl--;
+                frame_out->sender = boat->addr;
+                frame_out->receiver = route->node_neighbour;
+            }
             // adding to routing table
-            fisher_route_insert(boat, frame->originator, frame->sender);
+            struct fisher_route *old_route = fisher_route_get(boat, frame->originator);
+
+            if (old_route == NULL) {
+                fisher_route_insert(boat, frame->originator, frame->sender, frame->ttl);
+            } else if (old_route->hops < frame->ttl) {
+                fisher_route_insert(boat, frame->originator, frame->sender, frame->ttl);
+            }
+
             break;
     }
 }
@@ -103,7 +127,7 @@ struct fisher_frame * fisher_add_frame(struct fisher_boat *boat) {
 
 Status fisher_frame_generate_hello(struct fisher_boat *boat) {
     if (boat->addr == 123) {
-        printf("Generating hello packet (%d)...\n", boat->hello_seq);
+        DEBUG("Generating hello packet (%d)...\n", boat->hello_seq);
     }
 
     struct fisher_frame *pkg = fisher_add_frame(boat);
@@ -136,4 +160,14 @@ void fisher_frame_print(struct fisher_frame *frame) {
             printf("UNKNOWN");
     }
     printf("\n----\n");
+}
+
+void fisher_routing_debug(struct fisher_boat *boat) {
+    DEBUG("Routes:\n");
+    for (int i = 0; i < sizeof(boat->routes)/sizeof(struct fisher_route); i++) {
+        struct fisher_route *route = &(boat->routes[i]);
+        if (!route->active) continue;
+
+        DEBUG("route over %d\t\t->\t%d (destination)\n", route->node_neighbour, route->node_address);
+    }
 }

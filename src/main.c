@@ -9,11 +9,11 @@ struct connection {
 };
 
 #define AMOUNT_OF_NODES     5
-Address nodes[AMOUNT_OF_NODES] = {10, 23, 11, 42, 100};
+Address nodes[AMOUNT_OF_NODES] = {0, 1, 2, 3, 4};
 static struct connection connections[] = {
         {0, 1},
         {1, 2},
-        //{2, 3}
+        {2, 3}
 };
 
 int main() {
@@ -51,6 +51,7 @@ int main() {
                 frame = fisher_frame_get_to_be_sent(&(boat[connections[i].w]));
             }
         }
+
         usleep(10000); // evey 10 m
     }
     return 0;

@@ -1,4 +1,5 @@
 #include <stdint.h>
+#include <stdbool.h>
 
 #define MAX_FRAME_BUFFER_SIZE   128
 #define ADDRESS_SIZE            8
@@ -13,14 +14,18 @@ typedef enum Status {
     ERR = 1
 } Status;
 
+
 enum fisher_frame_type {
     FISHER_FRAME_TYPE_HELLO,
 
 };
 
-struct RoutingItem {
+struct fisher_route {
+    bool active;
     uint8_t node_address;
     uint8_t node_neighbour;
+    int last_update;
+    int hops;
 };
 
 
@@ -57,10 +62,10 @@ struct fisher_package {
 struct fisher_boat {
     Address addr;
     // routing table
-    struct RoutingItem* routing_tabele[ROUTINGSIZE];
+    struct fisher_route* routing_table[ROUTINGSIZE];
     //struct fisher_route route[ADDRESS_SIZE];
     // routing
-    Address routes[256];
+    struct fisher_route routes[256];
 
     struct fisher_frame to_be_sent[MAX_FRAME_BUFFER_SIZE];
     int to_be_sent_read;
@@ -101,5 +106,6 @@ struct fisher_frame * fisher_add_frame(struct fisher_boat *boat);
 
 
 Status fisher_route_init(struct fisher_boat *boat);
-Status fisher_route_insert(struct fisher_boat *boat, Address destination, Address neighbour);
-Address fisher_route_get(struct fisher_boat *boat, Address destination);
+Status fisher_route_insert(struct fisher_boat *boat, Address destination, Address neighbour, int hops);
+struct fisher_route * fisher_route_get(struct fisher_boat *boat, Address destination);
+void fisher_routing_debug(struct fisher_boat *boat);

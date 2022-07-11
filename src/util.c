@@ -10,23 +10,23 @@
 
 
 
-struct RoutingItem* dummyItem;
+struct fisher_route* dummyItem;
 
 
 int hashCode(uint8_t key) {
     return key % SIZE;
 }
 
-struct RoutingItem *search(uint8_t node_address, struct fisher_boat *boat ) {
+struct fisher_route *search(uint8_t node_address, struct fisher_boat *boat ) {
     //get the hash
     int hashIndex = hashCode(node_address);
 
     //move in array until an empty
-    while(boat->routing_tabele[hashIndex] != NULL) {
+    while(boat->routing_table[hashIndex] != NULL) {
 
-        if(boat->routing_tabele[hashIndex]->node_address == node_address)
+        if(boat->routing_table[hashIndex]->node_address == node_address)
         {
-            return boat->routing_tabele[hashIndex];
+            return boat->routing_table[hashIndex];
         }
         //go to next cell
         ++hashIndex;
@@ -41,7 +41,7 @@ struct RoutingItem *search(uint8_t node_address, struct fisher_boat *boat ) {
 void insert(uint8_t node_adress , uint8_t node_neighbour,struct fisher_boat *boat ) {
 
     printf("inserting route from %d -> %d",node_adress);
-    struct RoutingItem *item = (struct RoutingItem*) malloc(sizeof(struct RoutingItem));
+    struct fisher_route *item = (struct fisher_route*) malloc(sizeof(struct fisher_route));
     item->node_neighbour = node_neighbour;
     item->node_address = node_adress;
 
@@ -49,7 +49,7 @@ void insert(uint8_t node_adress , uint8_t node_neighbour,struct fisher_boat *boa
     int hashIndex = hashCode(node_adress);
 
     //move in array until an empty or deleted cell
-    while(boat->routing_tabele[hashIndex] != NULL && boat->routing_tabele[hashIndex]->node_address != -1) {
+    while(boat->routing_table[hashIndex] != NULL && boat->routing_table[hashIndex]->node_address != -1) {
         //go to next cell
         ++hashIndex;
 
@@ -57,23 +57,23 @@ void insert(uint8_t node_adress , uint8_t node_neighbour,struct fisher_boat *boa
         hashIndex %= SIZE;
     }
 
-    boat->routing_tabele[hashIndex] = item;
+    boat->routing_table[hashIndex] = item;
 }
 
-struct RoutingItem* delete(struct RoutingItem* item ,struct fisher_boat *boat) {
+struct fisher_route* delete(struct fisher_route* item , struct fisher_boat *boat) {
     uint8_t key = item->node_address;
 
     //get the hash
     int hashIndex = hashCode(key);
 
     //move in array until an empty
-    while(boat->routing_tabele[hashIndex] != NULL) {
+    while(boat->routing_table[hashIndex] != NULL) {
 
-        if(boat->routing_tabele[hashIndex]->node_address == key) {
-            struct RoutingItem* temp = boat->routing_tabele[hashIndex];
+        if(boat->routing_table[hashIndex]->node_address == key) {
+            struct fisher_route* temp = boat->routing_table[hashIndex];
 
             //assign a dummy item at deleted position
-            boat->routing_tabele[hashIndex] = dummyItem;
+            boat->routing_table[hashIndex] = dummyItem;
             return temp;
         }
 
@@ -91,12 +91,20 @@ Status fisher_route_init(struct fisher_boat *boat) {
     memset(boat->routes, 0, sizeof(boat->routes));
     return OK;
 }
-Status fisher_route_insert(struct fisher_boat *boat, Address destination, Address neighbour) {
-    printf("insterting route to %d over %d\n", destination, neighbour);
-    boat->routes[destination] = neighbour;
+Status fisher_route_insert(struct fisher_boat *boat, Address destination, Address neighbour, int hops) {
+    printf("[%d]\t\tinsterting route to %d over %d\n",boat->addr, destination, neighbour);
+    boat->routes[destination].active = true;
+    boat->routes[destination].node_address = destination;
+    boat->routes[destination].node_neighbour = neighbour;
+    boat->routes[destination].hops = hops;
+    fisher_routing_debug(&(boat[0]));
     return OK;
 }
 
-Address fisher_route_get(struct fisher_boat *boat, Address destination) {
-    return boat->routes[destination];
+
+struct fisher_route* fisher_route_get(struct fisher_boat *boat, Address destination) {
+    if (!boat->routes[destination].active) {
+        return NULL;
+    }
+    return &boat->routes[destination];
 }
