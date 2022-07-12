@@ -97,7 +97,7 @@ Status fisher_route_insert(struct fisher_boat *boat, Address destination, Addres
     boat->routes[destination].node_address = destination;
     boat->routes[destination].node_neighbour = neighbour;
     boat->routes[destination].hops = hops;
-    fisher_routing_debug(&(boat[0]));
+
     return OK;
 }
 

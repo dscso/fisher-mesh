@@ -35,7 +35,9 @@ Status fisher_tick(struct fisher_boat *boat) {
     if (boat->tick % boat->hello_evey_tick == 0) {
         fisher_frame_generate_hello(boat);
     }
-
+    if (boat->tick % (boat->hello_evey_tick * 10) == 0) {
+        fisher_routing_debug(&(boat[0]));
+    }
     boat->tick++;
     return OK;
 }
@@ -59,7 +61,6 @@ Status fisher_packet_read(struct fisher_boat* boat, struct fisher_frame *frame) 
             DEBUG("Recieved HELLO PKG form %d Forwarding...\n", frame->originator);
             if (frame->ttl == 0) {
                 // drop packet
-                fisher_frame_print(frame);
                 DEBUG("!!!!!!!!!!!!!!!!!!!!!!!! TTL == 0, dropping pkg\n");
                 break;
             }
@@ -73,10 +74,12 @@ Status fisher_packet_read(struct fisher_boat* boat, struct fisher_frame *frame) 
 
             // retransmit
             // iterate threw all
-            for (int i = 0; i < sizeof(boat->routes)/sizeof(struct fisher_route); i++) {
+            for (int i = 0; i < sizeof(boat->routes) / sizeof(struct fisher_route); i++) {
                 struct fisher_route *route = &(boat->routes[i]);
                 if (!route->active) continue;
                 if (frame->sender == route->node_address) continue; // do not echo back to sender
+                if (frame->originator == route->node_address) continue;
+
                 if (frame->ttl < route->hops) { // if there exist already a better route
                     DEBUG("hmm skip to %d over %d\n", frame->originator, frame->sender);
                     continue;
@@ -136,6 +139,7 @@ Status fisher_frame_generate_hello(struct fisher_boat *boat) {
         printf("ERROR buffer full!\n");
         return ERR;
     }
+
     pkg->type = FISHER_FRAME_TYPE_HELLO;
     pkg->originator = boat->addr;
     pkg->sender = boat->addr;
@@ -148,18 +152,19 @@ Status fisher_frame_generate_hello(struct fisher_boat *boat) {
 /*
  * debug frame
  */
-void fisher_frame_print(struct fisher_frame *frame) {
-    printf("----\nFisher packet   type:");
+void fisher_frame_print(struct fisher_boat *boat,  struct fisher_frame *frame) {
+    printf("\n");
+    DEBUG("----Fisher packet   type:");
     switch (frame->type) {
         case (FISHER_FRAME_TYPE_HELLO):
             printf("HELLO");
-            printf(" seq:\t%d\tttl: %d", frame->seq, frame->ttl);
-            printf("\n%d\t%d\t -> \t%d --> %d\n", frame->originator, frame->sender, frame->receiver, frame->recipient);
+            DEBUG(" seq:\t%d\tttl: %d", frame->seq, frame->ttl);
+            DEBUG("\n%d\t%d\t -> \t%d --> %d\n", frame->originator, frame->sender, frame->receiver, frame->recipient);
             break;
         default:
-            printf("UNKNOWN");
+            DEBUG("UNKNOWN");
     }
-    printf("\n----\n");
+    DEBUG("\n----\n");
 }
 
 void fisher_routing_debug(struct fisher_boat *boat) {

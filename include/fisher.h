@@ -100,7 +100,7 @@ struct fisher_frame * fisher_frame_get_to_be_sent(struct fisher_boat *boat);
 
 
 Status fisher_frame_generate_hello(struct fisher_boat *boat);
-void fisher_frame_print(struct fisher_frame *frame);
+void fisher_frame_print(struct fisher_boat *boat,  struct fisher_frame *frame);
 
 struct fisher_frame * fisher_add_frame(struct fisher_boat *boat);
 
