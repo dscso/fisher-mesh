@@ -7,7 +7,7 @@
 
 #define ROUTINGSIZE             30
 #define BROADCAST               0xff
-#define MAXIMUM_TTL             5
+#define MAXIMUM_HOPS             10
 
 typedef enum Status {
     OK = 0,
@@ -44,7 +44,7 @@ struct fisher_frame {
     Address receiver;
     Address recipient;
     // do we need a final_recipient
-    int ttl;
+    int hops;
     int rssi;
     int length;
     char * content;
@@ -62,7 +62,6 @@ struct fisher_package {
 struct fisher_boat {
     Address addr;
     // routing table
-    struct fisher_route* routing_table[ROUTINGSIZE];
     //struct fisher_route route[ADDRESS_SIZE];
     // routing
     struct fisher_route routes[256];

@@ -6,9 +6,6 @@
 #define FISHER_H_UTIL_H
 
 #endif //FISHER_H_UTIL_H
-int hashCode(uint8_t key);
-struct fisher_route *search(uint8_t node_address, struct fisher_boat *boat );
-void insert(uint8_t node_adress , uint8_t node_neighbour,struct fisher_boat *boat );
-struct fisher_route* delete(struct fisher_route* item , struct fisher_boat *boat);
-
-
+Status fisher_route_init(struct fisher_boat *boat);
+Status fisher_route_insert(struct fisher_boat *boat, Address destination, Address neighbour, int hops);
+struct fisher_route* fisher_route_get(struct fisher_boat *boat, Address destination);

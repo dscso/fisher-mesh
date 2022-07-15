@@ -8,13 +8,21 @@ struct connection {
     Address w;
 };
 
-#define AMOUNT_OF_NODES     3
-Address nodes[AMOUNT_OF_NODES] = {1, 2, 3};//, 4, 5};
+#define AMOUNT_OF_NODES     5
+Address nodes[AMOUNT_OF_NODES] = {1, 2, 3, 4, 5};
 static struct connection connections[] = {
         {0, 1},
         {1, 0},
+
         {2, 1},
         {1, 2},
+
+        {2,3},
+        {3, 2},
+
+        {4, 3},
+        {3, 4},
+
        // {2, 3}
 };
 
@@ -28,8 +36,6 @@ int main() {
         fisher_init(&(boat[i]), nodes[i]);
     }
 
-
-
     for (ever) {
         // tick all boats
         for (int i = 0; i < amount_of_nodes; i++) {
@@ -37,18 +43,19 @@ int main() {
         }
         // connect all boats
         for (int i = 0; i < amount_of_nodes; i++) {
-            struct fisher_frame *frame = fisher_frame_get_to_be_sent(&(boat[connections[i].v]));
+            struct fisher_boat *current_boat = &(boat[i]);
 
+            struct fisher_frame *frame = fisher_frame_get_to_be_sent(current_boat);
             while (frame != NULL) {
                 fisher_frame_print(&(boat[i]), frame);
                 for (int j = 0; j < amount_of_connections; j++) {
-                    if (boat[connections[j].v].addr != boat[i].addr) continue;
-                    printf("----- forwarding packet %d -> %d\n", boat[connections[j].v].addr, boat[connections[j].w].addr);
-                    fisher_packet_read(&(boat[connections[j].w]), frame);
+                    if (boat[connections[j].w].addr == current_boat->addr) {
+                        printf("----- forwarding packet %d -> ... -> %d -> %d\n",  frame->originator, frame->sender, boat[connections[j].v].addr);
+                        fisher_packet_read(&(boat[connections[j].v]), frame);
+                    }
                 }
-                fisher_packet_read(&(boat[i]), frame);
 
-                frame = fisher_frame_get_to_be_sent(&(boat[i]));
+                frame = fisher_frame_get_to_be_sent(current_boat);
             }
         }
 
