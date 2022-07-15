@@ -64,7 +64,7 @@ int main() {
                     if (boat[connections[j].v].addr != current_boat->addr) continue;
 
                     //printf("[%d] forwarding packet from %d -> ... -> %d -> %d recipant: %d\n",boat[connections[j].w].addr,  frame->originator, frame->sender, boat[connections[j].w].addr, frame->recipient);
-                    printf("\t--- %d %d %d %d\n", frame->originator, frame->sender, frame->receiver, frame->recipient);
+                    //printf("\t--- %d %d %d %d\n", frame->originator, frame->sender, frame->receiver, frame->recipient);
                     // TODO david deserialize
                     fisher_packet_read(&(boat[connections[j].w]), frame);
                 }
