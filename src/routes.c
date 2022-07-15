@@ -1,9 +1,8 @@
-#include <stdio.h>
 #include <string.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include "fisher.h"
-#include "util.h"
+#include "routes.h"
 
 Status fisher_route_init(struct fisher_boat *boat) {
     memset(boat->routes, 0, sizeof(boat->routes));

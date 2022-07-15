@@ -7,7 +7,7 @@
 
 #define ROUTINGSIZE             30
 #define BROADCAST               0xff
-#define MAXIMUM_HOPS             10
+#define MAXIMUM_HOPS             100
 
 typedef enum Status {
     OK = 0,

@@ -8,8 +8,8 @@ struct connection {
     Address w;
 };
 
-#define AMOUNT_OF_NODES     5
-Address nodes[AMOUNT_OF_NODES] = {1, 2, 3, 4, 5};
+#define AMOUNT_OF_NODES     9
+Address nodes[AMOUNT_OF_NODES] = {1, 2, 3, 4, 5,6,7, 8, 9};
 static struct connection connections[] = {
         {0, 1},
         {1, 0},
@@ -17,13 +17,23 @@ static struct connection connections[] = {
         {2, 1},
         {1, 2},
 
-        {2,3},
+        {2, 3},
         {3, 2},
 
         {4, 3},
         {3, 4},
+/*
+        {5,4},
+        {4,5},
 
-       // {2, 3}
+        {6,5},
+        {5,6},
+
+        {6,7},
+        {7,6},
+
+        {8,7},
+        {7,8}*/
 };
 
 int main() {
@@ -42,24 +52,23 @@ int main() {
             fisher_tick(&(boat[i]));
         }
         // connect all boats
-        for (int i = 0; i < amount_of_nodes; i++) {
+        for (int i = 0; i < amount_of_nodes; i++) { // go threw all boats
             struct fisher_boat *current_boat = &(boat[i]);
+            struct fisher_frame *frame = NULL;
 
-            struct fisher_frame *frame = fisher_frame_get_to_be_sent(current_boat);
-            while (frame != NULL) {
-                fisher_frame_print(&(boat[i]), frame);
-                for (int j = 0; j < amount_of_connections; j++) {
-                    if (boat[connections[j].w].addr == current_boat->addr) {
-                        printf("----- forwarding packet %d -> ... -> %d -> %d\n",  frame->originator, frame->sender, boat[connections[j].v].addr);
-                        fisher_packet_read(&(boat[connections[j].v]), frame);
-                    }
+            while ((frame = fisher_frame_get_to_be_sent(current_boat)) != NULL) {  // for each frame to be sent
+                //fisher_frame_print(&(boat[i]), frame);
+                for (int j = 0; j < amount_of_connections; j++) { // for evey connection
+                    if (boat[connections[j].v].addr != current_boat->addr) continue;
+
+                    //printf("[%d] forwarding packet from %d -> ... -> %d -> %d recipant: %d\n",boat[connections[j].w].addr,  frame->originator, frame->sender, boat[connections[j].w].addr, frame->recipient);
+                    fisher_packet_read(&(boat[connections[j].w]), frame);
                 }
-
-                frame = fisher_frame_get_to_be_sent(current_boat);
             }
         }
 
         usleep(10000); // evey 10 m
+        //printf("--------------------- TICK ----------------------\n");
     }
     return 0;
 }

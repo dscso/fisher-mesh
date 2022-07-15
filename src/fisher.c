@@ -1,10 +1,11 @@
 //
 // Created by Jurek on 21.06.22.
 //
-#include "fisher.h"
 #include <stdio.h>
 #include <string.h>
-#include "util.h"
+
+#include "fisher.h"
+#include "routes.h"
 #define DEBUG printf("[%d]\t\t", boat->addr); printf
 
 #define HELLO_EVEY_TICKS 100
@@ -54,7 +55,10 @@ Status fisher_packet_read(struct fisher_boat* boat, struct fisher_frame *frame) 
         return ERR;
     }
     // drop packet if receiver does not match own address/broadcast
-    if (frame->receiver != boat->addr && frame->receiver != BROADCAST) return OK;
+    if (frame->receiver != boat->addr && frame->receiver != BROADCAST) {
+        //DEBUG("Dropping Packet because not reciever!\n");
+        return OK;
+    }
 
     switch (frame->type) {
         case FISHER_FRAME_TYPE_HELLO:
@@ -64,13 +68,12 @@ Status fisher_packet_read(struct fisher_boat* boat, struct fisher_frame *frame) 
                 DEBUG("!!!!!!!!!!!!!!!!!!!!!!!! TTL == %d, dropping pkg\n", MAXIMUM_HOPS);
                 break;
             }
-            // TODO
-            // pakete nur an alle nachbarn einzeln weiterleiten, nicht broadcasten.
-            // jeder nachbar außer die herkunft
+
             if (frame->originator == boat->addr) {
-                printf("[%d]\t\toriginator is me dropping pkg\n", boat->addr);
+                DEBUG("originator is me dropping pkg\n");
                 break;
             }
+
             // adding to routing table
             struct fisher_route *old_route = fisher_route_get(boat, frame->originator);
 
@@ -82,26 +85,28 @@ Status fisher_packet_read(struct fisher_boat* boat, struct fisher_frame *frame) 
 
             // retransmit
             // iterate threw all
+            int count = 0;
             for (int i = 0; i < sizeof(boat->routes) / sizeof(struct fisher_route); i++) {
                 struct fisher_route *route = &(boat->routes[i]);
                 Address receiver = route->node_address;
                 Address next_hop = route->node_neighbour;
 
                 if (!route->active) continue;
-
+                count++;
                 if (frame->sender == receiver) continue; // do not echo back to sender
-                //if (frame->sender == next_hop) continue; // do not echo
-                //if (frame->originator == receiver) continue;
+                if (frame->sender == next_hop) continue; // do not echo
+                if (frame->originator == receiver) continue;
 
                 if (frame->hops > route->hops) { // if there exist already a better route
                     // todo : route cleanup
-                    DEBUG("better route existant skip to %d over %d\n", frame->originator, frame->sender);
-                    continue;
+                    DEBUG("better route existant with %d hops. skip to %d over %d\n", route->hops, frame->originator, frame->sender);
+                    //fisher_frame_print(boat, frame);
+                   // continue;
                 }
 
                 struct fisher_frame *frame_out = fisher_add_frame(boat);
                 if (frame_out == NULL) {
-                    printf("Error, cannot sent more frames, buffer full!");
+                    printf("Error, cannot sent more frames, buffer full!\n");
                     break;
                 }
                 memcpy(frame_out, frame, sizeof(struct fisher_frame));
@@ -110,6 +115,7 @@ Status fisher_packet_read(struct fisher_boat* boat, struct fisher_frame *frame) 
                 frame_out->sender = boat->addr;
                 frame_out->receiver = next_hop;
             }
+            printf("AAAAACTIVE ROUUUUTES %d", count);
             break;
     }
     return OK;
@@ -131,13 +137,12 @@ struct fisher_frame * fisher_add_frame(struct fisher_boat *boat) {
     struct fisher_frame *ret = &(boat->to_be_sent[boat->to_be_sent_write]);
     boat->to_be_sent_write = (boat->to_be_sent_write + 1) % MAX_FRAME_BUFFER_SIZE;
     boat->to_be_sent_count++;
-    memset(ret, 0, sizeof(struct fisher_frame));
+    memset(ret, 0, sizeof(struct fisher_frame)); // for security
     return ret;
 }
 
 Status fisher_frame_generate_hello(struct fisher_boat *boat) {
     struct fisher_frame *pkg = fisher_add_frame(boat);
-    boat->hello_seq++;
     if (pkg == NULL) {
         DEBUG("ERROR buffer full!\n");
         return ERR;
@@ -148,8 +153,10 @@ Status fisher_frame_generate_hello(struct fisher_boat *boat) {
     pkg->sender = boat->addr;
     pkg->recipient = BROADCAST;
     pkg->receiver = BROADCAST;
-    pkg->seq = boat->hello_seq - 1;
+    pkg->seq = boat->hello_seq;
     pkg->hops = 0;
+
+    boat->hello_seq++;
     return OK;
 }
 /*
@@ -172,10 +179,12 @@ void fisher_frame_print(struct fisher_boat *boat,  struct fisher_frame *frame) {
 
 void fisher_routing_debug(struct fisher_boat *boat) {
     DEBUG("Routes:\n");
+    int count = 0;
     for (int i = 0; i < sizeof(boat->routes)/sizeof(struct fisher_route); i++) {
         struct fisher_route *route = &(boat->routes[i]);
         if (!route->active) continue;
-
+        count++;
         DEBUG("route over %d\t\t->\t%d (destination)\n", route->node_neighbour, route->node_address);
     }
+    DEBUG("Total:\t%d\n", count);
 }
