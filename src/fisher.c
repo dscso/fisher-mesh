@@ -59,10 +59,11 @@ Status fisher_packet_read(struct fisher_boat* boat, struct fisher_frame *frame) 
         //DEBUG("Dropping Packet because not reciever!\n");
         return OK;
     }
-
+    bool marked[256];
+    memset(&marked, 0, sizeof(marked));
     switch (frame->type) {
         case FISHER_FRAME_TYPE_HELLO:
-            DEBUG("Recieved HELLO PKG form %d Forwarding...\n", frame->originator);
+            DEBUG("Received HELLO form %d from %d Forwarding...\n", frame->originator, frame->sender);
             if (frame->hops > MAXIMUM_HOPS) {
                 // drop packet
                 DEBUG("!!!!!!!!!!!!!!!!!!!!!!!! TTL == %d, dropping pkg\n", MAXIMUM_HOPS);
@@ -96,13 +97,8 @@ Status fisher_packet_read(struct fisher_boat* boat, struct fisher_frame *frame) 
                 if (frame->sender == receiver) continue; // do not echo back to sender
                 if (frame->sender == next_hop) continue; // do not echo
                 if (frame->originator == receiver) continue;
-
-                if (frame->hops > route->hops) { // if there exist already a better route
-                    // todo : route cleanup
-                    DEBUG("better route existant with %d hops. skip to %d over %d\n", route->hops, frame->originator, frame->sender);
-                    //fisher_frame_print(boat, frame);
-                   // continue;
-                }
+                if (marked[next_hop]) continue;
+                marked[next_hop] = true;
 
                 struct fisher_frame *frame_out = fisher_add_frame(boat);
                 if (frame_out == NULL) {
@@ -115,7 +111,6 @@ Status fisher_packet_read(struct fisher_boat* boat, struct fisher_frame *frame) 
                 frame_out->sender = boat->addr;
                 frame_out->receiver = next_hop;
             }
-            printf("AAAAACTIVE ROUUUUTES %d", count);
             break;
     }
     return OK;
@@ -154,7 +149,7 @@ Status fisher_frame_generate_hello(struct fisher_boat *boat) {
     pkg->recipient = BROADCAST;
     pkg->receiver = BROADCAST;
     pkg->seq = boat->hello_seq;
-    pkg->hops = 0;
+    pkg->hops = 1;
 
     boat->hello_seq++;
     return OK;
@@ -184,7 +179,7 @@ void fisher_routing_debug(struct fisher_boat *boat) {
         struct fisher_route *route = &(boat->routes[i]);
         if (!route->active) continue;
         count++;
-        DEBUG("route over %d\t\t->\t%d (destination)\n", route->node_neighbour, route->node_address);
+        DEBUG("route over %d\t\t->\t%d (destination) (%d)\n", route->node_neighbour, route->node_address, route->hops);
     }
     DEBUG("Total:\t%d\n", count);
 }
