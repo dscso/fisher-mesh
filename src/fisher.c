@@ -1,6 +1,3 @@
-//
-// Created by Jurek on 21.06.22.
-//
 #include <stdio.h>
 #include <string.h>
 
@@ -148,8 +145,9 @@ Status fisher_frame_generate_hello(struct fisher_boat *boat) {
     pkg->sender = boat->addr;
     pkg->recipient = BROADCAST;
     pkg->receiver = BROADCAST;
-    pkg->seq = boat->hello_seq;
     pkg->hops = 1;
+
+    pkg->seq = boat->hello_seq;
 
     boat->hello_seq++;
     return OK;

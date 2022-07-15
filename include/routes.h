@@ -1,7 +1,3 @@
-//
-// Created by david on 05.07.22.
-//
-
 #ifndef FISHER_H_UTIL_H
 #define FISHER_H_UTIL_H
 
