@@ -2,6 +2,8 @@
 #include <unistd.h>
 #include <string.h>
 #include "fisher.h"
+#include "bintool.h"
+
 #define     ever    ;;
 
 struct connection {
@@ -66,11 +68,14 @@ int main() {
                 //fisher_frame_print(&(boat[i]), frame);
                 for (int j = 0; j < amount_of_connections; j++) { // for evey connection
                     if (boat[connections[j].v].addr != current_boat->addr) continue;
-
+                    uint8_t pkg[300];
+                    fisher_serialize(frame, &pkg);
+                    struct fisher_frame frm;
+                    fisher_deserialize(&frm, &pkg);
                     //printf("[%d] forwarding packet from %d -> ... -> %d -> %d recipant: %d\n",boat[connections[j].w].addr,  frame->originator, frame->sender, boat[connections[j].w].addr, frame->recipient);
                     //printf("\t--- %d %d %d %d\n", frame->originator, frame->sender, frame->receiver, frame->recipient);
                     // TODO david deserialize
-                    fisher_packet_read(&(boat[connections[j].w]), frame);
+                    fisher_packet_read(&(boat[connections[j].w]), &frm);
                 }
             }
             count++;
