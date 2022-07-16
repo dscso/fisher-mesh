@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <unistd.h>
+#include <string.h>
 #include "fisher.h"
 #define     ever    ;;
 
@@ -34,7 +35,10 @@ static struct connection connections[] = {
 
 
         {8,7},
-        {7,8}
+        {7,8},
+
+        {8,0},
+        {0,8}
 };
 
 int main() {
@@ -46,7 +50,7 @@ int main() {
     for (int i = 0; i < amount_of_nodes; i++) {
         fisher_init(&(boat[i]), nodes[i]);
     }
-
+    int count = 0;
     for (ever) {
         // tick all boats
         for (int i = 0; i < amount_of_nodes; i++) {
@@ -69,8 +73,13 @@ int main() {
                     fisher_packet_read(&(boat[connections[j].w]), frame);
                 }
             }
+            count++;
         }
-
+        if (count % 11 * 100 == 0) {
+            printf("Sending...!\n");
+            char s[] = "hi das ist ein test";
+            fisher_packet_generate(&boat[0], boat[2].addr, s , strlen(s));
+        }
         usleep(10000); // evey 10 m
         //printf("--------------------- TICK ----------------------\n");
     }

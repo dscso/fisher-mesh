@@ -41,8 +41,28 @@ Status fisher_tick(struct fisher_boat *boat) {
 }
 
 // generates data frames
-Status fisher_packet_generate(struct fisher_boat *boat /* TODO */) {
-    return ERR;
+Status fisher_packet_generate(struct fisher_boat *boat, Address recipient, char *data, int len) {
+    struct fisher_route *route = fisher_route_get(boat, recipient);
+    if (route == NULL) {
+        printf("Sorry, host not found! Could not send to %d!\n", recipient);
+        return HOST_NOT_FOUND;
+    }
+    struct fisher_frame *pkg = fisher_add_frame(boat);
+    if (pkg == NULL) {
+        DEBUG("ERROR buffer full!\n");
+        return ERR;
+    }
+
+    pkg->type = FISHER_FRAME_TYPE_DATA;
+    pkg->originator = boat->addr;
+    pkg->sender = boat->addr;
+    pkg->recipient = recipient;
+    memcpy(pkg->content, data, len);
+    pkg->length = len;
+    pkg->receiver = route->node_neighbour;
+    pkg->hops = 0;
+    printf("Sent!\n");
+    return OK;
 }
 Status fisher_packet_read(struct fisher_boat* boat, struct fisher_frame *frame) {
     // TODO
@@ -53,24 +73,27 @@ Status fisher_packet_read(struct fisher_boat* boat, struct fisher_frame *frame) 
     }
     // drop packet if receiver does not match own address/broadcast
     if (frame->receiver != boat->addr && frame->receiver != BROADCAST) {
-        //DEBUG("Dropping Packet because not reciever!\n");
+        //DEBUG("Dropping Packet because not receiver!\n");
         return OK;
     }
+
+    if (frame->hops > MAXIMUM_HOPS) {
+        // drop packet
+        DEBUG("!!!!!!!!!!!!!!!!!!!!!!!! TTL == %d, dropping pkg\n", MAXIMUM_HOPS);
+        return OK;
+    }
+
+    if (frame->originator == boat->addr) {
+        DEBUG("originator is me dropping pkg\n");
+        return OK;
+    }
+
     bool marked[256];
     memset(&marked, 0, sizeof(marked));
     switch (frame->type) {
         case FISHER_FRAME_TYPE_HELLO:
-            DEBUG("Received HELLO form %d from %d Forwarding...\n", frame->originator, frame->sender);
-            if (frame->hops > MAXIMUM_HOPS) {
-                // drop packet
-                DEBUG("!!!!!!!!!!!!!!!!!!!!!!!! TTL == %d, dropping pkg\n", MAXIMUM_HOPS);
-                break;
-            }
-
-            if (frame->originator == boat->addr) {
-                DEBUG("originator is me dropping pkg\n");
-                break;
-            }
+            printf("");
+            //DEBUG("Received HELLO form %d from %d Forwarding...\n", frame->originator, frame->sender);
 
             // adding to routing table
             struct fisher_route *old_route = fisher_route_get(boat, frame->originator);
@@ -93,7 +116,7 @@ Status fisher_packet_read(struct fisher_boat* boat, struct fisher_frame *frame) 
                 count++;
                 if (frame->sender == receiver) continue; // do not echo back to sender
                 if (frame->sender == next_hop) continue; // do not echo
-                if (frame->originator == receiver) continue;
+                if (frame->originator == next_hop) continue;
                 if (marked[next_hop]) continue;
                 marked[next_hop] = true;
 
@@ -108,6 +131,34 @@ Status fisher_packet_read(struct fisher_boat* boat, struct fisher_frame *frame) 
                 frame_out->sender = boat->addr;
                 frame_out->receiver = next_hop;
             }
+            break;
+        case FISHER_FRAME_TYPE_DATA:
+            DEBUG("Received Data...");
+            if (frame->originator == boat->addr) {
+                DEBUG("Received Frame!");
+                fisher_frame_print(boat, frame);
+                break;
+            }
+            if (frame->recipient == boat->addr) {
+                // Handle packet
+                DEBUG("Recieved Packet! with content \"%s\" and len %d", frame->content, frame->length);
+            }
+            DEBUG("Forwarding\n");
+            struct fisher_route *route = fisher_route_get(boat, frame->recipient);
+            if (route == NULL) {
+                DEBUG("Sorry, host %d not found! Could not Forward...\n", frame->recipient);
+                break;
+            }
+            struct fisher_frame *frame_out = fisher_add_frame(boat);
+            if (frame_out == NULL) {
+                DEBUG("Error, cannot sent more frames, buffer full!\n");
+                break;
+            }
+            memcpy(frame_out, frame, sizeof(struct fisher_frame));
+
+            frame_out->hops++;
+            frame_out->sender = boat->addr;
+            frame_out->receiver = route->node_neighbour;
             break;
     }
     return OK;

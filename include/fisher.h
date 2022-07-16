@@ -11,13 +11,14 @@
 
 typedef enum Status {
     OK = 0,
-    ERR = 1
+    ERR = 1,
+    HOST_NOT_FOUND
 } Status;
 
 
 enum fisher_frame_type {
     FISHER_FRAME_TYPE_HELLO,
-
+    FISHER_FRAME_TYPE_DATA
 };
 
 struct fisher_route {
@@ -47,7 +48,7 @@ struct fisher_frame {
     int hops;
     int rssi;
     int length;
-    char * content;
+    char content[255];
 };
 
 // a DATA package that should be routed
@@ -88,7 +89,7 @@ Status fisher_init(struct fisher_boat *boat, Address addr);
 Status fisher_tick(struct fisher_boat *boat);
 
 // generates data frames
-Status fisher_packet_generate(struct fisher_boat *boat /* TODO */);
+Status fisher_packet_generate(struct fisher_boat *boat, Address recipient, char *data, int len);
 Status fisher_packet_read(struct fisher_boat* boat, struct fisher_frame *frame);
 
 // responds to hello frames
