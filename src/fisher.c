@@ -2,11 +2,16 @@
 #include <string.h>
 
 #include "fisher.h"
-#include "routes.h"
 #define DEBUG printf("[%d]\t\t", boat->addr); printf
 
-#define HELLO_EVEY_TICKS 100
-
+#define HELLO_EVEY_TICKS 10
+#define TIMEOUT_TICKS    HELLO_EVEY_TICKS * 10
+/**
+ * boat constructor
+ * @param boat context of the boat (either on stack or on heap)
+ * @param addr address of the boat
+ * @return status
+ */
 Status fisher_init(struct fisher_boat *boat, Address addr){
     // init all with 0, create new routing table etc
     boat->addr = addr;
@@ -22,9 +27,14 @@ Status fisher_init(struct fisher_boat *boat, Address addr){
     return OK;
 }
 
-// gets executed evey loop, generate HELLO frames
+//
 // #pre boat in old state
 // #post if algorithm decides to send hello messages,
+/**
+ * gets executed evey loop, generate HELLO frames
+ * @param boat
+ * @return status
+ */
 Status fisher_tick(struct fisher_boat *boat) {
     // TODO
     // compare if time has passed to send ogm2 msg
@@ -33,14 +43,29 @@ Status fisher_tick(struct fisher_boat *boat) {
     if (boat->tick % boat->hello_evey_tick == 0) {
         fisher_frame_generate_hello(boat);
     }
-    if (boat->tick % (boat->hello_evey_tick * 3) == 0) {
-        fisher_routing_debug(&(boat[0]));
-    }
     boat->tick++;
+    // clean up routes
+    for (int i = 0; i < sizeof(boat->routes) / sizeof(struct fisher_route); i++) {
+        struct fisher_route *route = &(boat->routes[i]);
+
+        if (!route->active) continue;
+        if (route->last_update + TIMEOUT_TICKS < boat->tick) {
+            route->active = false;
+            DEBUG("Removing route to %d due to timeout!\n", route->node_address);
+        }
+    }
     return OK;
 }
 
-// generates data frames
+/**
+ * generates data frames
+ * @param boat
+ * @param recipient
+ * @param data
+ * @param len
+ * @return status
+ * registers a new frame that should be sent and puts it in the to be sent buffer
+ */
 Status fisher_packet_generate(struct fisher_boat *boat, Address recipient, char *data, int len) {
     struct fisher_route *route = fisher_route_get(boat, recipient);
     if (route == NULL) {
@@ -64,9 +89,15 @@ Status fisher_packet_generate(struct fisher_boat *boat, Address recipient, char 
     printf("Sent!\n");
     return OK;
 }
+
+
+/**
+ * gets called by the hardware and processed the received frame
+ * @param boat
+ * @param frame
+ * @return status
+ */
 Status fisher_packet_read(struct fisher_boat* boat, struct fisher_frame *frame) {
-    // TODO
-    // check if it is a ogm msg and forward
     if (frame == NULL) {
         printf("Error! processing empty frame!");
         return ERR;
@@ -76,7 +107,7 @@ Status fisher_packet_read(struct fisher_boat* boat, struct fisher_frame *frame) 
         //DEBUG("Dropping Packet because not receiver!\n");
         return OK;
     }
-
+    // too many hops
     if (frame->hops > MAXIMUM_HOPS) {
         // drop packet
         DEBUG("!!!!!!!!!!!!!!!!!!!!!!!! TTL == %d, dropping pkg\n", MAXIMUM_HOPS);
@@ -93,15 +124,15 @@ Status fisher_packet_read(struct fisher_boat* boat, struct fisher_frame *frame) 
     switch (frame->type) {
         case FISHER_FRAME_TYPE_HELLO:
             printf("");
-            //DEBUG("Received HELLO form %d from %d Forwarding...\n", frame->originator, frame->sender);
+            DEBUG("Received HELLO form %d from %d Forwarding...\n", frame->originator, frame->sender);
 
             // adding to routing table
             struct fisher_route *old_route = fisher_route_get(boat, frame->originator);
 
             if (old_route == NULL) {
-                fisher_route_insert(boat, frame->originator, frame->sender, frame->hops);
+                fisher_route_insert(boat, frame->originator, frame->sender, frame->hops, boat->tick);
             } else if (old_route->hops > frame->hops) { // if the current route is the better one
-                fisher_route_insert(boat, frame->originator, frame->sender, frame->hops);
+                fisher_route_insert(boat, frame->originator, frame->sender, frame->hops, boat->tick);
             }
 
             // retransmit
@@ -142,6 +173,7 @@ Status fisher_packet_read(struct fisher_boat* boat, struct fisher_frame *frame) 
             if (frame->recipient == boat->addr) {
                 // Handle packet
                 DEBUG("Recieved Packet! with content \"%s\" and len %d", frame->content, frame->length);
+                break;
             }
             DEBUG("Forwarding\n");
             struct fisher_route *route = fisher_route_get(boat, frame->recipient);
@@ -163,7 +195,11 @@ Status fisher_packet_read(struct fisher_boat* boat, struct fisher_frame *frame) 
     }
     return OK;
 }
-
+/**
+ * get frame that should be sent by the harware
+ * @param boat
+ * @return frame
+ */
 struct fisher_frame * fisher_frame_get_to_be_sent(struct fisher_boat *boat) {
     if (boat->to_be_sent_count == 0) return NULL;
     boat->to_be_sent_count--;
@@ -172,8 +208,10 @@ struct fisher_frame * fisher_frame_get_to_be_sent(struct fisher_boat *boat) {
     return ret;
 }
 
-/*
+/**
  * Adds a frame to the to be sended queue returns null if queue is full
+ * @param boat
+ * @return fisher_frame
  */
 struct fisher_frame * fisher_add_frame(struct fisher_boat *boat) {
     if (boat->to_be_sent_count == MAX_FRAME_BUFFER_SIZE) return NULL;
@@ -183,7 +221,11 @@ struct fisher_frame * fisher_add_frame(struct fisher_boat *boat) {
     memset(ret, 0, sizeof(struct fisher_frame)); // for security
     return ret;
 }
-
+/**
+ * generates hello packet
+ * @param boat
+ * @return status
+ */
 Status fisher_frame_generate_hello(struct fisher_boat *boat) {
     struct fisher_frame *pkg = fisher_add_frame(boat);
     if (pkg == NULL) {
@@ -203,8 +245,10 @@ Status fisher_frame_generate_hello(struct fisher_boat *boat) {
     boat->hello_seq++;
     return OK;
 }
-/*
- * debug frame
+/**
+ * debug a frame
+ * @param boat
+ * @param frame
  */
 void fisher_frame_print(struct fisher_boat *boat,  struct fisher_frame *frame) {
     printf("\n");
@@ -220,7 +264,10 @@ void fisher_frame_print(struct fisher_boat *boat,  struct fisher_frame *frame) {
     }
     DEBUG("\n----\n");
 }
-
+/**
+ * print routing table
+ * @param boat
+ */
 void fisher_routing_debug(struct fisher_boat *boat) {
     DEBUG("Routes:\n");
     int count = 0;

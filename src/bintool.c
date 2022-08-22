@@ -2,6 +2,12 @@
 #include <stdio.h>
 #include <string.h>
 
+/**
+ * function serializes a frame to a packet
+ * @param frame: frame to be serialized
+ * @param buffer: destination (255 Bytes)
+ * @return size of frame
+ */
 int fisher_serialize(struct fisher_frame *frame, uint8_t* buffer) {
     int pos = 0;
     buffer[pos++] = (uint8_t) frame->type;
@@ -28,13 +34,18 @@ int fisher_serialize(struct fisher_frame *frame, uint8_t* buffer) {
             break;
 
         default:
-            printf("ooo ein anderes paket wurde geschickt yahelele!");
+            printf("packet not implemented yet!");
             break;
     }
 
     return pos;
 }
-
+/**
+ * function deserializes packet to frame
+ * @param frame: type frame
+ * @param buffer: input packet
+ * @return size of the buffer
+ */
 int fisher_deserialize(struct fisher_frame *frame, uint8_t* buffer) {
     int pos = 0;
     frame->type = buffer[pos++];
@@ -55,10 +66,11 @@ int fisher_deserialize(struct fisher_frame *frame, uint8_t* buffer) {
             break;
         case FISHER_FRAME_TYPE_DATA:
                 frame->length = buffer[pos++];
+                // TODO: possible bufferoverflow
                 memcpy(frame->content, buffer + pos, frame->length);
                 break;
         default:
-            printf("not implementet yet!");
+            printf("packet not implemented yet!");
             break;
     }
     return pos;

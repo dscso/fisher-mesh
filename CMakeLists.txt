@@ -1,7 +1,12 @@
-cmake_minimum_required(VERSION 3.22)
-project(fisher_mesh C)
+cmake_minimum_required(VERSION 2.8.9)
+project (CC1200)
 
-set(CMAKE_C_STANDARD 99)
+set (LOCAL_LIB "/usr/local/lib")
+set (PRUSS_LIBS "-Wl,-rpath=$(LOCAL_LIB) -L$(LOCAL_LIB) -lprussdrv")
+set (SPI_LIB "-L${LOCAL_LIB} -lspi")
+set (CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${SPI_LIB} ${PRUSS_LIBS}")
 
 include_directories(include)
-add_executable(fisher_mesh src/main.c src/fisher.c include/fisher.h src/routes.c include/routes.h src/bintool.c include/bintool.h)
+
+file(GLOB SOURCES "src/*.c")
+add_executable(project ${SOURCES})

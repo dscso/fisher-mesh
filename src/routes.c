@@ -8,11 +8,12 @@ Status fisher_route_init(struct fisher_boat *boat) {
     memset(boat->routes, 0, sizeof(boat->routes));
     return OK;
 }
-Status fisher_route_insert(struct fisher_boat *boat, Address destination, Address neighbour, int hops) {
+Status fisher_route_insert(struct fisher_boat *boat, Address destination, Address neighbour, int hops, int tick) {
     boat->routes[destination].active = true;
     boat->routes[destination].node_address = destination;
     boat->routes[destination].node_neighbour = neighbour;
     boat->routes[destination].hops = hops;
+    boat->routes[destination].last_update = tick;
 
     return OK;
 }
